@@ -6,6 +6,7 @@
 <title>Axonum Systems — AI Receptionist Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/index.js"></script>
 <style>
   :root {
     --black: #0a0a0a;
@@ -37,7 +38,6 @@
     position: relative;
   }
 
-  /* Ambient background */
   body::before {
     content: '';
     position: fixed;
@@ -63,7 +63,6 @@
     z-index: 0;
   }
 
-  /* Scanline overlay */
   .scanlines {
     position: fixed;
     inset: 0;
@@ -90,7 +89,6 @@
     gap: 2rem;
   }
 
-  /* Header */
   .header {
     text-align: center;
     animation: fadeDown 0.8s ease both;
@@ -114,7 +112,6 @@
     font-weight: 300;
   }
 
-  /* Main card */
   .card {
     width: 100%;
     background: var(--panel);
@@ -139,7 +136,6 @@
     opacity: 0.5;
   }
 
-  /* Avatar / orb */
   .orb-wrap {
     position: relative;
     width: 120px;
@@ -185,7 +181,6 @@
     line-height: 1;
   }
 
-  /* Pulse rings when active */
   .orb-wrap.active .orb-ring {
     animation: spin 3s linear infinite;
     border-color: rgba(201,168,76,0.5);
@@ -201,7 +196,6 @@
     border-color: var(--green);
   }
 
-  /* Waveform bars */
   .waveform {
     display: flex;
     align-items: center;
@@ -230,7 +224,6 @@
   .waveform.active .bar:nth-child(6) { animation-delay: 0.15s; }
   .waveform.active .bar:nth-child(7) { animation-delay: 0.05s; }
 
-  /* Identity block */
   .identity {
     text-align: center;
   }
@@ -251,7 +244,6 @@
     margin-top: 0.3rem;
   }
 
-  /* Status badge */
   .status-badge {
     display: flex;
     align-items: center;
@@ -293,7 +285,6 @@
 
   .dot.pulse { animation: blink 1.2s ease infinite; }
 
-  /* Language chips */
   .lang-chips {
     display: flex;
     gap: 0.5rem;
@@ -317,121 +308,86 @@
     background: var(--gold-dim);
   }
 
-  /* CTA Button */
-  .cta-btn {
-    width: 100%;
-    padding: 1rem 2rem;
-    border-radius: 12px;
-    border: 1px solid var(--gold);
-    background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
-    color: var(--gold-light);
-    font-family: 'Syne', sans-serif;
-    font-weight: 600;
-    font-size: 0.9rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .cta-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(201,168,76,0.2), transparent);
-    opacity: 0;
-    transition: opacity 0.25s ease;
-  }
-
-  .cta-btn:hover::before { opacity: 1; }
-  .cta-btn:hover { box-shadow: 0 0 20px rgba(201,168,76,0.15); }
-
-  .cta-btn:active { transform: scale(0.98); }
-
-  .cta-btn.end {
-    border-color: var(--red);
-    background: rgba(224,92,92,0.1);
-    color: #f08080;
-  }
-
-  .cta-btn.end::before {
-    background: linear-gradient(135deg, rgba(224,92,92,0.2), transparent);
-  }
-
-  .cta-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  /* Transcript */
   .transcript-wrap {
     width: 100%;
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.5s ease;
+    transition: max-height 0.4s ease;
   }
 
-  .transcript-wrap.visible { max-height: 200px; }
+  .transcript-wrap.visible {
+    max-height: 180px;
+  }
 
   .transcript {
-    width: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.02);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem;
-    font-size: 0.82rem;
-    line-height: 1.6;
-    color: var(--muted);
-    min-height: 80px;
-    max-height: 180px;
+    border-radius: 8px;
+    padding: 0.75rem;
+    max-height: 160px;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
   }
 
-  .transcript-line {
-    margin-bottom: 0.4rem;
-    animation: fadeUp 0.3s ease both;
-  }
-
-  .transcript-line .speaker {
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-right: 0.4rem;
-  }
-
+  .transcript-line { display: flex; gap: 0.4rem; }
   .transcript-line.ai .speaker { color: var(--gold); }
   .transcript-line.user .speaker { color: var(--green); }
-  .transcript-line.ai { color: #c5bfb5; }
-  .transcript-line.user { color: #9dbfa6; }
+  .speaker { font-weight: 600; flex-shrink: 0; }
 
-  /* Hint text */
+  .cta-btn {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--gold);
+    background: linear-gradient(135deg, rgba(201,168,76,0.12), rgba(201,168,76,0.06));
+    color: var(--gold-light);
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .cta-btn:hover {
+    background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.1));
+    box-shadow: 0 0 20px rgba(201,168,76,0.15);
+  }
+
+  .cta-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .cta-btn.end {
+    border-color: var(--red);
+    background: linear-gradient(135deg, rgba(224,92,92,0.12), rgba(224,92,92,0.06));
+    color: #f08080;
+  }
+
   .hint {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     color: var(--muted);
     text-align: center;
     line-height: 1.6;
-    letter-spacing: 0.02em;
-    animation: fadeUp 1s ease 0.5s both;
+    animation: fadeUp 1s ease 0.4s both;
   }
 
-  .hint strong {
-    color: rgba(201,168,76,0.7);
-    font-weight: 500;
-  }
+  .hint strong { color: var(--gold); font-weight: 500; }
 
-  /* Footer */
   .footer {
     font-size: 0.65rem;
-    color: #3a3632;
+    color: #3a3530;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    text-align: center;
-    animation: fadeUp 1s ease 0.7s both;
+    animation: fadeUp 1s ease 0.6s both;
   }
 
-  /* Animations */
   @keyframes fadeDown {
     from { opacity: 0; transform: translateY(-16px); }
     to { opacity: 1; transform: translateY(0); }
@@ -457,7 +413,6 @@
     50% { opacity: 0.2; }
   }
 
-  /* Error toast */
   .toast {
     position: fixed;
     bottom: 2rem;
@@ -476,7 +431,6 @@
 
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* Mobile */
   @media (max-width: 480px) {
     .container { padding: 1.5rem 1rem; }
     .card { padding: 2rem 1.5rem; }
@@ -517,7 +471,7 @@
       <div class="ai-role">AI Receptionist · Axonum Systems</div>
     </div>
 
-    <div class="status-badge" id="statusBadge">
+    <div class="status-badge ready" id="statusBadge">
       <div class="dot"></div>
       <span id="statusText">Ready to Connect</span>
     </div>
@@ -549,37 +503,29 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- VAPI SDK -->
 <script>
-  (function(d, t) {
-    var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
-    g.src = "https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/index.js";
-    g.async = true;
-    s.parentNode.insertBefore(g, s);
-  })(document, "script");
-</script>
-
-<script>
-  // ============================================================
-  // CONFIGURATION — Replace these with your actual values
-  // ============================================================
-  const VAPI_PUBLIC_KEY = "904a999f-2138-4299-b389-2ea3c1516d45";  // From Vapi dashboard → Account
-  const ASSISTANT_ID    = "09d35c71-cfc2-4377-ac0c-ab3d48a44a8c";      // From Vapi dashboard → Assistants
-  // ============================================================
+  const VAPI_PUBLIC_KEY = "904a999f-2138-4299-b389-2ea3c1516d45";
+  const ASSISTANT_ID    = "09d35c71-cfc2-4377-ac0c-ab3d48a44a8c";
 
   let vapi = null;
   let callActive = false;
   let vapiReady = false;
 
-  // Wait for Vapi SDK to load
   function initVapi() {
-    if (typeof window.Vapi === 'undefined') {
+    if (typeof Vapi === 'undefined') {
       setTimeout(initVapi, 300);
       return;
     }
-    vapi = new window.Vapi(VAPI_PUBLIC_KEY);
-    vapiReady = true;
-    bindEvents();
+    try {
+      vapi = new Vapi(VAPI_PUBLIC_KEY);
+      vapiReady = true;
+      setStatus('ready', 'Ready to Connect');
+      bindEvents();
+      console.log('Vapi initialised successfully');
+    } catch(e) {
+      console.error('Vapi init error:', e);
+      setTimeout(initVapi, 1000);
+    }
   }
 
   function bindEvents() {
@@ -615,7 +561,6 @@
       if (msg.type === 'transcript') {
         if (msg.role === 'assistant' && msg.transcriptType === 'final') {
           addTranscriptLine('ai', 'ARIA', msg.transcript);
-          // Language detection from assistant output
           detectLanguageChip(msg.transcript);
         }
         if (msg.role === 'user' && msg.transcriptType === 'final') {
@@ -637,15 +582,9 @@
 
   function handleCall() {
     if (!vapiReady) {
-      showToast('Still loading, please wait...');
+      showToast('Still loading, please wait a moment...');
       return;
     }
-
-    if (VAPI_PUBLIC_KEY === 'YOUR_VAPI_PUBLIC_KEY') {
-      showToast('⚠️ Add your Vapi Public Key and Assistant ID to the code');
-      return;
-    }
-
     if (!callActive) {
       setStatus('ready', 'Connecting...');
       document.getElementById('mainBtn').disabled = true;
@@ -654,8 +593,9 @@
           document.getElementById('mainBtn').disabled = false;
         })
         .catch((err) => {
+          console.error('Call start error:', err);
           document.getElementById('mainBtn').disabled = false;
-          showToast('Could not start call. Check console.');
+          showToast('Could not start call. Please try again.');
           setStatus('ready', 'Ready to Connect');
         });
     } else {
@@ -668,7 +608,6 @@
     }
   }
 
-  // UI helpers
   function setStatus(type, text) {
     const badge = document.getElementById('statusBadge');
     const dot = badge.querySelector('.dot');
@@ -742,8 +681,12 @@
     setTimeout(() => t.classList.remove('show'), 3500);
   }
 
-  // Boot
-  window.addEventListener('load', () => setTimeout(initVapi, 500));
+  // Initialise immediately when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVapi);
+  } else {
+    initVapi();
+  }
 </script>
 </body>
 </html>

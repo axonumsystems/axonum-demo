@@ -6,7 +6,7 @@
 <title>Axonum Systems — AI Receptionist Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/index.js"></script>
+
 <style>
   :root {
     --black: #0a0a0a;
@@ -503,111 +503,118 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Vapi HTML Script Tag SDK -->
 <script>
-  const VAPI_PUBLIC_KEY = "904a999f-2138-4299-b389-2ea3c1516d45";
-  const ASSISTANT_ID    = "09d35c71-cfc2-4377-ac0c-ab3d48a44a8c";
+  (function (d, t) {
+    var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+    g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+    g.defer = true;
+    g.async = true;
+    s.parentNode.insertBefore(g, s);
+    g.onload = function () {
+      const VAPI_PUBLIC_KEY = "904a999f-2138-4299-b389-2ea3c1516d45";
+      const ASSISTANT_ID    = "09d35c71-cfc2-4377-ac0c-ab3d48a44a8c";
 
-  let vapi = null;
-  let callActive = false;
-  let vapiReady = false;
+      // Hide the default Vapi button — we use our own UI
+      const style = document.createElement('style');
+      style.textContent = '#vapi-support-btn { display: none !important; }';
+      document.head.appendChild(style);
 
-  function initVapi() {
-    if (typeof Vapi === 'undefined') {
-      setTimeout(initVapi, 300);
-      return;
-    }
-    try {
-      vapi = new Vapi(VAPI_PUBLIC_KEY);
-      vapiReady = true;
-      setStatus('ready', 'Ready to Connect');
-      bindEvents();
-      console.log('Vapi initialised successfully');
-    } catch(e) {
-      console.error('Vapi init error:', e);
-      setTimeout(initVapi, 1000);
-    }
-  }
-
-  function bindEvents() {
-    vapi.on('call-start', () => {
-      callActive = true;
-      setStatus('connected', 'Connected');
-      setOrbState('active');
-      showWaveform(false);
-      showTranscript(true);
-      updateBtn('end');
-      addTranscriptLine('ai', 'ARIA', 'Connecting...');
-    });
-
-    vapi.on('call-end', () => {
-      callActive = false;
-      setStatus('ready', 'Ready to Connect');
-      setOrbState('idle');
-      showWaveform(false);
-      updateBtn('start');
-      setTimeout(() => showTranscript(false), 3000);
-    });
-
-    vapi.on('speech-start', () => {
-      showWaveform(true);
-      setOrbState('active');
-    });
-
-    vapi.on('speech-end', () => {
-      showWaveform(false);
-    });
-
-    vapi.on('message', (msg) => {
-      if (msg.type === 'transcript') {
-        if (msg.role === 'assistant' && msg.transcriptType === 'final') {
-          addTranscriptLine('ai', 'ARIA', msg.transcript);
-          detectLanguageChip(msg.transcript);
+      const vapi = window.vapiSDK.run({
+        apiKey: VAPI_PUBLIC_KEY,
+        assistant: ASSISTANT_ID,
+        config: {
+          position: "bottom-right",
+          offset: "40px",
+          width: "50px",
+          height: "50px",
+          idle: { color: "rgb(201,168,76)", type: "round", icon: "" },
+          loading: { color: "rgb(201,168,76)", type: "round" },
+          active: { color: "rgb(76,175,125)", type: "round", icon: "" }
         }
-        if (msg.role === 'user' && msg.transcriptType === 'final') {
-          addTranscriptLine('user', 'You', msg.transcript);
-          detectLanguageChip(msg.transcript);
+      });
+
+      let callActive = false;
+
+      vapi.on('call-start', () => {
+        callActive = true;
+        setStatus('connected', 'Connected');
+        setOrbState('active');
+        showTranscript(true);
+        updateBtn('end');
+        addTranscriptLine('ai', 'ARIA', 'Connecting...');
+      });
+
+      vapi.on('call-end', () => {
+        callActive = false;
+        setStatus('ready', 'Ready to Connect');
+        setOrbState('idle');
+        showWaveform(false);
+        updateBtn('start');
+        setTimeout(() => showTranscript(false), 3000);
+      });
+
+      vapi.on('speech-start', () => {
+        showWaveform(true);
+        setOrbState('active');
+      });
+
+      vapi.on('speech-end', () => {
+        showWaveform(false);
+      });
+
+      vapi.on('message', (msg) => {
+        if (msg.type === 'transcript') {
+          if (msg.role === 'assistant' && msg.transcriptType === 'final') {
+            addTranscriptLine('ai', 'ARIA', msg.transcript);
+            detectLanguageChip(msg.transcript);
+          }
+          if (msg.role === 'user' && msg.transcriptType === 'final') {
+            addTranscriptLine('user', 'You', msg.transcript);
+            detectLanguageChip(msg.transcript);
+          }
         }
-      }
-    });
+      });
 
-    vapi.on('error', (err) => {
-      console.error('Vapi error:', err);
-      showToast('Connection error. Please try again.');
-      callActive = false;
-      setStatus('ready', 'Ready to Connect');
-      setOrbState('idle');
-      updateBtn('start');
-    });
-  }
+      vapi.on('error', (err) => {
+        console.error('Vapi error:', err);
+        showToast('Connection error. Please try again.');
+        callActive = false;
+        setStatus('ready', 'Ready to Connect');
+        setOrbState('idle');
+        updateBtn('start');
+      });
 
-  function handleCall() {
-    if (!vapiReady) {
-      showToast('Still loading, please wait a moment...');
-      return;
-    }
-    if (!callActive) {
-      setStatus('ready', 'Connecting...');
-      document.getElementById('mainBtn').disabled = true;
-      vapi.start(ASSISTANT_ID)
-        .then(() => {
-          document.getElementById('mainBtn').disabled = false;
-        })
-        .catch((err) => {
-          console.error('Call start error:', err);
-          document.getElementById('mainBtn').disabled = false;
-          showToast('Could not start call. Please try again.');
-          setStatus('ready', 'Ready to Connect');
-        });
-    } else {
-      vapi.stop();
-      setStatus('ending', 'Ending...');
-      document.getElementById('mainBtn').disabled = true;
-      setTimeout(() => {
-        document.getElementById('mainBtn').disabled = false;
-      }, 2000);
-    }
-  }
+      window.handleCall = function() {
+        if (!callActive) {
+          setStatus('ready', 'Connecting...');
+          document.getElementById('mainBtn').disabled = true;
+          vapi.start(ASSISTANT_ID)
+            .then(() => {
+              document.getElementById('mainBtn').disabled = false;
+            })
+            .catch((err) => {
+              console.error('Call start error:', err);
+              document.getElementById('mainBtn').disabled = false;
+              showToast('Could not start call. Please try again.');
+              setStatus('ready', 'Ready to Connect');
+            });
+        } else {
+          vapi.stop();
+          setStatus('ending', 'Ending...');
+          document.getElementById('mainBtn').disabled = true;
+          setTimeout(() => {
+            document.getElementById('mainBtn').disabled = false;
+          }, 2000);
+        }
+      };
 
+      console.log('Vapi SDK loaded successfully');
+    };
+  })(document, "script");
+</script>
+
+<script>
   function setStatus(type, text) {
     const badge = document.getElementById('statusBadge');
     const dot = badge.querySelector('.dot');
@@ -648,7 +655,7 @@
     const t = document.getElementById('transcript');
     const line = document.createElement('div');
     line.className = 'transcript-line ' + role;
-    line.innerHTML = `<span class="speaker">${speaker}:</span>${text}`;
+    line.innerHTML = '<span class="speaker">' + speaker + ':</span>' + text;
     t.appendChild(line);
     t.scrollTop = t.scrollHeight;
   }
@@ -656,15 +663,12 @@
   function detectLanguageChip(text) {
     const bm = /\b(saya|anda|boleh|tidak|terima kasih|selamat|apa|ini|itu|dengan|untuk|yang|di|ke|dari|ada|sudah|akan|nama|nombor|tarikh|klinik|pejabat|tolong|macam mana|kenapa)\b/i;
     const mx = /\b(lah|lor|kan|mah|weh|bro|sis|okay|ok lah|quite|already|also|right|confirm|nvm|yup|tapi|kalau|memang)\b/i;
-
     const chips = {
       EN: document.getElementById('chipEN'),
       BM: document.getElementById('chipBM'),
       MX: document.getElementById('chipMX'),
     };
-
     Object.values(chips).forEach(c => c.classList.remove('active'));
-
     if (bm.test(text) && !mx.test(text)) {
       chips.BM.classList.add('active');
     } else if (mx.test(text)) {
@@ -681,12 +685,10 @@
     setTimeout(() => t.classList.remove('show'), 3500);
   }
 
-  // Initialise immediately when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initVapi);
-  } else {
-    initVapi();
-  }
+  // Default handleCall before SDK loads
+  window.handleCall = function() {
+    showToast('Still loading, please wait a moment...');
+  };
 </script>
 </body>
 </html>

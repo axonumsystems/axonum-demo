@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Axonum Systems — AI Receptionist Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --charcoal: #141414;
+    --panel: #1a1a1a;
+    --border: #2a2a2a;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: rgba(201,168,76,0.15);
+    --white: #f0ece4;
+    --muted: #6b6560;
+    --green: #4caf7d;
+    --red: #e05c5c;
+    --pulse: rgba(201,168,76,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Ambient background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -20%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(201,168,76,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline overlay */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 480px;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .wordmark {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+  }
+
+  .tagline {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* Main card */
+  .card {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.8rem;
+    animation: fadeUp 0.9s ease 0.2s both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.5;
+  }
+
+  /* Avatar / orb */
+  .orb-wrap {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .orb-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(201,168,76,0.2);
+    animation: spin 12s linear infinite;
+  }
+
+  .orb-ring::after {
+    content: '';
+    position: absolute;
+    top: -2px; left: 50%;
+    width: 4px; height: 4px;
+    background: var(--gold);
+    border-radius: 50%;
+    transform: translateX(-50%);
+  }
+
+  .orb {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #2a2318, var(--charcoal));
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .orb-icon {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  /* Pulse rings when active */
+  .orb-wrap.active .orb-ring {
+    animation: spin 3s linear infinite;
+    border-color: rgba(201,168,76,0.5);
+  }
+
+  .orb-wrap.active .orb {
+    box-shadow: 0 0 0 8px rgba(201,168,76,0.08), 0 0 0 16px rgba(201,168,76,0.04);
+    border-color: var(--gold);
+  }
+
+  .orb-wrap.listening .orb {
+    box-shadow: 0 0 0 8px rgba(76,175,125,0.1), 0 0 0 20px rgba(76,175,125,0.05);
+    border-color: var(--green);
+  }
+
+  /* Waveform bars */
+  .waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 28px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .waveform.visible { opacity: 1; }
+
+  .bar {
+    width: 3px;
+    background: var(--gold);
+    border-radius: 2px;
+    height: 4px;
+    transition: height 0.1s ease;
+  }
+
+  .waveform.active .bar { animation: wave 0.8s ease-in-out infinite; }
+  .waveform.active .bar:nth-child(1) { animation-delay: 0s; }
+  .waveform.active .bar:nth-child(2) { animation-delay: 0.1s; }
+  .waveform.active .bar:nth-child(3) { animation-delay: 0.2s; }
+  .waveform.active .bar:nth-child(4) { animation-delay: 0.1s; }
+  .waveform.active .bar:nth-child(5) { animation-delay: 0.0s; }
+  .waveform.active .bar:nth-child(6) { animation-delay: 0.15s; }
+  .waveform.active .bar:nth-child(7) { animation-delay: 0.05s; }
+
+  /* Identity block */
+  .identity {
+    text-align: center;
+  }
+
+  .ai-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: 0.05em;
+    color: var(--white);
+  }
+
+  .ai-role {
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: all 0.3s ease;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .status-badge.ready {
+    border-color: rgba(201,168,76,0.3);
+    color: var(--gold);
+    background: var(--gold-dim);
+  }
+
+  .status-badge.connected {
+    border-color: rgba(76,175,125,0.3);
+    color: var(--green);
+    background: rgba(76,175,125,0.08);
+  }
+
+  .status-badge.ending {
+    border-color: rgba(224,92,92,0.3);
+    color: var(--red);
+    background: rgba(224,92,92,0.08);
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .dot.pulse { animation: blink 1.2s ease infinite; }
+
+  /* Language chips */
+  .lang-chips {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .chip {
+    padding: 0.3rem 0.75rem;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: rgba(255,255,255,0.02);
+    transition: all 0.3s ease;
+  }
+
+  .chip.active {
+    border-color: rgba(201,168,76,0.4);
+    color: var(--gold-light);
+    background: var(--gold-dim);
+  }
+
+  /* CTA Button */
+  .cta-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--gold);
+    background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
+    color: var(--gold-light);
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(201,168,76,0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .cta-btn:hover::before { opacity: 1; }
+  .cta-btn:hover { box-shadow: 0 0 20px rgba(201,168,76,0.15); }
+
+  .cta-btn:active { transform: scale(0.98); }
+
+  .cta-btn.end {
+    border-color: var(--red);
+    background: rgba(224,92,92,0.1);
+    color: #f08080;
+  }
+
+  .cta-btn.end::before {
+    background: linear-gradient(135deg, rgba(224,92,92,0.2), transparent);
+  }
+
+  .cta-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Transcript */
+  .transcript-wrap {
+    width: 100%;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+
+  .transcript-wrap.visible { max-height: 200px; }
+
+  .transcript {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--muted);
+    min-height: 80px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .transcript-line {
+    margin-bottom: 0.4rem;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .transcript-line .speaker {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-right: 0.4rem;
+  }
+
+  .transcript-line.ai .speaker { color: var(--gold); }
+  .transcript-line.user .speaker { color: var(--green); }
+  .transcript-line.ai { color: #c5bfb5; }
+  .transcript-line.user { color: #9dbfa6; }
+
+  /* Hint text */
+  .hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+    animation: fadeUp 1s ease 0.5s both;
+  }
+
+  .hint strong {
+    color: rgba(201,168,76,0.7);
+    font-weight: 500;
+  }
+
+  /* Footer */
+  .footer {
+    font-size: 0.65rem;
+    color: #3a3632;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    animation: fadeUp 1s ease 0.7s both;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes wave {
+    0%, 100% { height: 4px; }
+    50% { height: 22px; }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* Error toast */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--panel);
+    border: 1px solid rgba(224,92,92,0.4);
+    color: #f08080;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    .container { padding: 1.5rem 1rem; }
+    .card { padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<div class="container">
+
+  <div class="header">
+    <div class="wordmark">Axonum Systems</div>
+    <div class="tagline">Applied AI Systems Agency</div>
+  </div>
+
+  <div class="card">
+
+    <div class="orb-wrap" id="orbWrap">
+      <div class="orb-ring"></div>
+      <div class="orb">
+        <span class="orb-icon">🎙️</span>
+      </div>
+    </div>
+
+    <div class="waveform" id="waveform">
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+    </div>
+
+    <div class="identity">
+      <div class="ai-name">ARIA</div>
+      <div class="ai-role">AI Receptionist · Axonum Systems</div>
+    </div>
+
+    <div class="status-badge" id="statusBadge">
+      <div class="dot"></div>
+      <span id="statusText">Ready to Connect</span>
+    </div>
+
+    <div class="lang-chips">
+      <div class="chip" id="chipEN">English</div>
+      <div class="chip" id="chipBM">Bahasa</div>
+      <div class="chip" id="chipMX">Manglish</div>
+    </div>
+
+    <div class="transcript-wrap" id="transcriptWrap">
+      <div class="transcript" id="transcript"></div>
+    </div>
+
+    <button class="cta-btn" id="mainBtn" onclick="handleCall()">
+      ▶ &nbsp; Start Demo Call
+    </button>
+
+  </div>
+
+  <p class="hint">
+    Speak naturally in <strong>English, Malay, or Manglish</strong>.<br>
+    ARIA will detect your language and respond accordingly.
+  </p>
+
+  <div class="footer">Powered by Vapi · ElevenLabs · Axonum Systems</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- VAPI SDK -->
+<script>
+  (function(d, t) {
+    var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+    g.src = "https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/index.js";
+    g.async = true;
+    s.parentNode.insertBefore(g, s);
+  })(document, "script");
+</script>
+
+<script>
+  // ============================================================
+  // CONFIGURATION — Replace these with your actual values
+  // ============================================================
+  const VAPI_PUBLIC_KEY = "904a999f-2138-4299-b389-2ea3c1516d45";  // From Vapi dashboard → Account
+  const ASSISTANT_ID    = "09d35c71-cfc2-4377-ac0c-ab3d48a44a8c";      // From Vapi dashboard → Assistants
+  // ============================================================
+
+  let vapi = null;
+  let callActive = false;
+  let vapiReady = false;
+
+  // Wait for Vapi SDK to load
+  function initVapi() {
+    if (typeof window.Vapi === 'undefined') {
+      setTimeout(initVapi, 300);
+      return;
+    }
+    vapi = new window.Vapi(VAPI_PUBLIC_KEY);
+    vapiReady = true;
+    bindEvents();
+  }
+
+  function bindEvents() {
+    vapi.on('call-start', () => {
+      callActive = true;
+      setStatus('connected', 'Connected');
+      setOrbState('active');
+      showWaveform(false);
+      showTranscript(true);
+      updateBtn('end');
+      addTranscriptLine('ai', 'ARIA', 'Connecting...');
+    });
+
+    vapi.on('call-end', () => {
+      callActive = false;
+      setStatus('ready', 'Ready to Connect');
+      setOrbState('idle');
+      showWaveform(false);
+      updateBtn('start');
+      setTimeout(() => showTranscript(false), 3000);
+    });
+
+    vapi.on('speech-start', () => {
+      showWaveform(true);
+      setOrbState('active');
+    });
+
+    vapi.on('speech-end', () => {
+      showWaveform(false);
+    });
+
+    vapi.on('message', (msg) => {
+      if (msg.type === 'transcript') {
+        if (msg.role === 'assistant' && msg.transcriptType === 'final') {
+          addTranscriptLine('ai', 'ARIA', msg.transcript);
+          // Language detection from assistant output
+          detectLanguageChip(msg.transcript);
+        }
+        if (msg.role === 'user' && msg.transcriptType === 'final') {
+          addTranscriptLine('user', 'You', msg.transcript);
+          detectLanguageChip(msg.transcript);
+        }
+      }
+    });
+
+    vapi.on('error', (err) => {
+      console.error('Vapi error:', err);
+      showToast('Connection error. Please try again.');
+      callActive = false;
+      setStatus('ready', 'Ready to Connect');
+      setOrbState('idle');
+      updateBtn('start');
+    });
+  }
+
+  function handleCall() {
+    if (!vapiReady) {
+      showToast('Still loading, please wait...');
+      return;
+    }
+
+    if (VAPI_PUBLIC_KEY === 'YOUR_VAPI_PUBLIC_KEY') {
+      showToast('⚠️ Add your Vapi Public Key and Assistant ID to the code');
+      return;
+    }
+
+    if (!callActive) {
+      setStatus('ready', 'Connecting...');
+      document.getElementById('mainBtn').disabled = true;
+      vapi.start(ASSISTANT_ID)
+        .then(() => {
+          document.getElementById('mainBtn').disabled = false;
+        })
+        .catch((err) => {
+          document.getElementById('mainBtn').disabled = false;
+          showToast('Could not start call. Check console.');
+          setStatus('ready', 'Ready to Connect');
+        });
+    } else {
+      vapi.stop();
+      setStatus('ending', 'Ending...');
+      document.getElementById('mainBtn').disabled = true;
+      setTimeout(() => {
+        document.getElementById('mainBtn').disabled = false;
+      }, 2000);
+    }
+  }
+
+  // UI helpers
+  function setStatus(type, text) {
+    const badge = document.getElementById('statusBadge');
+    const dot = badge.querySelector('.dot');
+    badge.className = 'status-badge ' + type;
+    document.getElementById('statusText').textContent = text;
+    if (type === 'connected') dot.classList.add('pulse');
+    else dot.classList.remove('pulse');
+  }
+
+  function setOrbState(state) {
+    const wrap = document.getElementById('orbWrap');
+    wrap.className = 'orb-wrap ' + (state === 'idle' ? '' : state);
+  }
+
+  function showWaveform(active) {
+    const w = document.getElementById('waveform');
+    w.classList.add('visible');
+    if (active) w.classList.add('active');
+    else w.classList.remove('active');
+  }
+
+  function showTranscript(show) {
+    document.getElementById('transcriptWrap').classList.toggle('visible', show);
+  }
+
+  function updateBtn(state) {
+    const btn = document.getElementById('mainBtn');
+    if (state === 'end') {
+      btn.className = 'cta-btn end';
+      btn.innerHTML = '◼ &nbsp; End Call';
+    } else {
+      btn.className = 'cta-btn';
+      btn.innerHTML = '▶ &nbsp; Start Demo Call';
+    }
+  }
+
+  function addTranscriptLine(role, speaker, text) {
+    const t = document.getElementById('transcript');
+    const line = document.createElement('div');
+    line.className = 'transcript-line ' + role;
+    line.innerHTML = `<span class="speaker">${speaker}:</span>${text}`;
+    t.appendChild(line);
+    t.scrollTop = t.scrollHeight;
+  }
+
+  function detectLanguageChip(text) {
+    const bm = /\b(saya|anda|boleh|tidak|terima kasih|selamat|apa|ini|itu|dengan|untuk|yang|di|ke|dari|ada|sudah|akan|nama|nombor|tarikh|klinik|pejabat|tolong|macam mana|kenapa)\b/i;
+    const mx = /\b(lah|lor|kan|mah|weh|bro|sis|okay|ok lah|quite|already|also|right|confirm|nvm|yup|tapi|kalau|memang)\b/i;
+
+    const chips = {
+      EN: document.getElementById('chipEN'),
+      BM: document.getElementById('chipBM'),
+      MX: document.getElementById('chipMX'),
+    };
+
+    Object.values(chips).forEach(c => c.classList.remove('active'));
+
+    if (bm.test(text) && !mx.test(text)) {
+      chips.BM.classList.add('active');
+    } else if (mx.test(text)) {
+      chips.MX.classList.add('active');
+    } else {
+      chips.EN.classList.add('active');
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // Boot
+  window.addEventListener('load', () => setTimeout(initVapi, 500));
+</script>
+</body>
+</html>
